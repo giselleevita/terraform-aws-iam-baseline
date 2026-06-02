@@ -6,6 +6,8 @@
 
 > Opinionated Terraform baseline for AWS IAM — enforces least-privilege roles, MFA policies, password hardening, unused region lockdown, and audit-ready access logging.
 
+For the hiring-focused project narrative, see [docs/CASE_STUDY.md](docs/CASE_STUDY.md).
+
 Drop this module into any AWS account to establish a security-hardened IAM baseline aligned with CIS AWS Foundations Benchmark and NIST SP 800-53.
 
 ---
