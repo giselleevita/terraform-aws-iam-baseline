@@ -12,6 +12,34 @@ Drop this module into any AWS account to establish a security-hardened IAM basel
 
 ---
 
+## Reviewer Quick Start
+
+For a fast technical review:
+
+1. Read the control table below to see how human access, audit access, password policy, and region restrictions are handled.
+2. Run `terraform fmt -check`, `terraform validate`, and the repository security checks from CI.
+3. Inspect [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) for the client-style scenario and implementation tradeoffs.
+4. Pair this module with [`terraform-aws-secure-vpc`](https://github.com/giselleevita/terraform-aws-secure-vpc) to evaluate the full AWS security baseline.
+
+This project is intended to show identity security judgment: least privilege, MFA enforcement, audit role design, CloudTrail integrity, and region governance.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Users[Human users] --> MFA[MFA enforcement policy]
+    MFA --> Roles[Least-privilege IAM roles]
+    Roles --> Audit[Read-only audit role]
+    Roles --> Regions[Approved region policy]
+    Account[Account password policy] --> Users
+    CloudTrail[CloudTrail with integrity validation] --> Logs[S3 audit log bucket]
+    Audit --> Logs
+```
+
+---
+
 ## What It Enforces
 
 | Control | Implementation |
