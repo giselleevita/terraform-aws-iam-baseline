@@ -1,45 +1,56 @@
-# Case Study: Terraform AWS IAM Baseline
+# Case Study: Terraform AWS IAM S3 Read Role
 
 ## Problem
 
-AWS accounts can quickly accumulate broad permissions, weak human-user controls, and unclear audit access. This module demonstrates a small but important IAM baseline for accounts that need secure defaults before application teams start building.
+Small AWS workloads often need one service to read evidence, logs, exports, or reports from a specific S3 bucket. A common mistake is to attach broad managed policies such as `AmazonS3ReadOnlyAccess`, which grants read visibility across too much of the account.
+
+This module demonstrates the narrower pattern: create one role, one trust boundary, and one bucket-scoped read-only policy.
 
 ## Solution
 
-The module applies account-level IAM hardening, including password policy controls, MFA enforcement for human users, an audit role, and region restrictions for unused regions.
+The Terraform module creates:
+
+- an IAM policy that allows `s3:ListBucket` only on one bucket
+- object read permissions only under that same bucket
+- an IAM role that can be assumed only by configured AWS service principals
+- a role-policy attachment connecting the role and the least-privilege policy
 
 ## Architecture
 
-- Terraform module for repeatable IAM configuration.
-- Password policy resources for account hardening.
-- MFA enforcement policy for interactive users.
-- Read-only audit role with CloudTrail access.
-- Deny policy for unused AWS regions.
+- `data.aws_iam_policy_document.s3_read_only` builds the scoped S3 policy.
+- `data.aws_iam_policy_document.assume_role` defines which service principals may assume the role.
+- `aws_iam_policy.s3_read_only` creates a reusable customer-managed policy.
+- `aws_iam_role.this` creates the role.
+- `aws_iam_role_policy_attachment.attach_s3_read_only` attaches the policy to the role.
 
 ## Engineering Choices
 
-- The baseline focuses on controls that are easy to review and explain.
-- Terraform keeps IAM changes versioned and reproducible.
-- MFA enforcement separates human-user hardening from service-role design.
-- Audit role access supports security review without giving broad admin rights.
+- The policy is bucket-scoped instead of account-wide.
+- Trust is explicit through `trusted_service_principals`.
+- The module keeps the policy small enough for line-by-line review.
+- Inputs are validated so empty role names, bucket names, and trust lists fail early.
+- Provider configuration is kept minimal for simple local review, but production consumers should pass provider configuration from the root module.
 
 ## Security And Reliability Controls
 
-- Least-privilege audit access.
-- Stronger password policy.
-- MFA requirements for human users.
-- Region restriction to reduce accidental exposure.
-- Infrastructure-as-code review path for IAM changes.
+- Least-privilege S3 read access.
+- No wildcard bucket access.
+- No S3 write or delete permissions.
+- Explicit role trust policy.
+- CI checks for Terraform formatting, validation, linting, and security scanning.
+
+## Current Limitations
+
+This is not a full AWS account IAM baseline. It does not currently enforce MFA, password policy, CloudTrail, Organizations SCPs, region restrictions, IAM Access Analyzer, or human-user lifecycle controls.
 
 ## What This Shows
 
-This repo demonstrates cloud security fundamentals that matter in client delivery: identity, least privilege, auditability, and repeatable infrastructure.
-
-It pairs well with the secure VPC module because together they show both network and identity foundations.
+This repo demonstrates a concrete IAM least-privilege pattern that a reviewer can verify quickly. It is strongest when presented as a focused module, not as a full account security baseline.
 
 ## Next Improvements
 
-- Add example account configurations.
-- Add IAM Access Analyzer validation notes.
-- Add automated checks with `terraform validate`, `tflint`, and `checkov`.
-- Add diagrams for human-user, service-role, and audit-role boundaries.
+- Add Terraform tests that assert exact IAM policy actions and resources.
+- Add an example for Lambda or EC2 consumption.
+- Remove provider configuration from the module and document root-module provider usage.
+- Add an optional external ID condition for cross-account assumptions.
+- Build a separate full IAM account-baseline module if MFA, password policy, CloudTrail, and region governance are required.
