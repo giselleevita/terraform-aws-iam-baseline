@@ -1,14 +1,14 @@
 # terraform-aws-iam-baseline
 
-![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.3-purple)
-![AWS](https://img.shields.io/badge/AWS-IAM%20%7C%20CloudTrail-orange)
+![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.5-purple)
+![AWS](https://img.shields.io/badge/AWS-IAM%20%7C%20S3-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> Opinionated Terraform baseline for AWS IAM — enforces least-privilege roles, MFA policies, password hardening, unused region lockdown, and audit-ready access logging.
+> Small Terraform module that creates a least-privilege IAM role for read-only access to one S3 bucket.
 
 For the hiring-focused project narrative, see [docs/CASE_STUDY.md](docs/CASE_STUDY.md).
 
-Drop this module into any AWS account to establish a security-hardened IAM baseline aligned with CIS AWS Foundations Benchmark and NIST SP 800-53.
+This repository is intentionally scoped to one reviewable IAM pattern: create a service-assumable role with the minimum S3 read permissions needed for a specific bucket. It does not claim to be a full AWS account baseline.
 
 ---
 
@@ -16,60 +16,66 @@ Drop this module into any AWS account to establish a security-hardened IAM basel
 
 For a fast technical review:
 
-1. Read the control table below to see how human access, audit access, password policy, and region restrictions are handled.
-2. Run `terraform fmt -check`, `terraform validate`, and the repository security checks from CI.
-3. Inspect [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) for the client-style scenario and implementation tradeoffs.
-4. Pair this module with [`terraform-aws-secure-vpc`](https://github.com/giselleevita/terraform-aws-secure-vpc) to evaluate the full AWS security baseline.
-
-This project is intended to show identity security judgment: least privilege, MFA enforcement, audit role design, CloudTrail integrity, and region governance.
+1. Inspect `main.tf` to verify that S3 access is scoped to one bucket ARN and its objects.
+2. Inspect `variables.tf` to see the module inputs and validation.
+3. Run `terraform fmt -check`, `terraform validate`, `tflint`, and `tfsec` through the existing CI workflow.
+4. Read [docs/CASE_STUDY.md](docs/CASE_STUDY.md) for the design rationale and limitations.
 
 ---
 
-## Architecture
+## What It Creates
 
 ```mermaid
 flowchart TD
-    Users[Human users] --> MFA[MFA enforcement policy]
-    MFA --> Roles[Least-privilege IAM roles]
-    Roles --> Audit[Read-only audit role]
-    Roles --> Regions[Approved region policy]
-    Account[Account password policy] --> Users
-    CloudTrail[CloudTrail with integrity validation] --> Logs[S3 audit log bucket]
-    Audit --> Logs
+    Service[AWS service principal] --> Role[IAM role]
+    Role --> Policy[S3 read-only policy]
+    Policy --> Bucket[Specific S3 bucket]
+    Policy --> Objects[Objects in that bucket]
 ```
-
----
-
-## What It Enforces
 
 | Control | Implementation |
 |---|---|
-| Password complexity & rotation | IAM account password policy (length ≥14, symbols, expiry 90d) |
-| MFA for all human users | SCP-style deny policy — blocks console access without MFA |
-| Least-privilege audit role | Read-only role scoped to CloudTrail, Config, and IAM read |
-| Unused region lockdown | Deny-all SCP for non-approved AWS regions |
-| Audit logging | CloudTrail enabled with S3 delivery and integrity validation |
+| Bucket-scoped access | `s3:ListBucket` is limited to `arn:aws:s3:::<bucket>` |
+| Object read access | `s3:GetObject` and `s3:GetObjectVersion` are limited to `arn:aws:s3:::<bucket>/*` |
+| Explicit trust boundary | Only configured AWS service principals can assume the role |
+| Input validation | Bucket name, role name, and trusted principals must be non-empty |
+| Reviewable policy | The IAM policy document is generated from Terraform data sources |
 
 ---
 
-## Compliance Mapping
+## What It Does Not Do
 
-| Framework | Controls Covered |
-|---|---|
-| CIS AWS Foundations v2 | 1.5, 1.8, 1.10, 1.14, 1.15, 2.1 |
-| NIST SP 800-53 | AC-2, AC-3, AC-6, AU-2, AU-9, IA-5 |
-| ISO 27001:2022 | A.5.15, A.5.16, A.5.18, A.8.2 |
+This module does not currently implement:
+
+- IAM account password policy
+- MFA enforcement for human users
+- AWS Organizations SCPs
+- CloudTrail setup
+- region lockdown
+- Access Analyzer integration
+- user or group lifecycle management
+
+Those controls are useful account-baseline features, but they are outside this module's current implementation.
 
 ---
 
 ## Usage
 
 ```hcl
-module "iam_baseline" {
-  source           = "./modules/iam-baseline"
-  account_alias    = "my-company-prod"
-  mfa_enforcement  = true
-  approved_regions = ["eu-west-1", "eu-central-1"]
+module "s3_read_role" {
+  source = "./"
+
+  bucket_name = "my-audit-evidence-bucket"
+  role_name   = "audit-evidence-reader"
+
+  trusted_service_principals = [
+    "ec2.amazonaws.com"
+  ]
+
+  tags = {
+    Environment = "dev"
+    Owner       = "security"
+  }
 }
 ```
 
@@ -77,16 +83,31 @@ module "iam_baseline" {
 
 ## Requirements
 
-- Terraform >= 1.3
+- Terraform >= 1.5
 - AWS provider >= 5.0
-- IAM permissions: `iam:*`, `organizations:AttachPolicy` (for SCPs)
+- IAM permissions to create roles, policies, and policy attachments
 
 ---
 
-## Related
+## Outputs
 
-- [terraform-aws-secure-vpc](https://github.com/giselleevita/terraform-aws-secure-vpc) — hardened VPC baseline
-- [secure-docs-aws](https://github.com/giselleevita/secure-docs-aws) — encrypted document storage with KMS + IAM
+| Output | Description |
+|---|---|
+| `policy_arn` | ARN of the generated S3 read-only IAM policy |
+| `role_name` | Name of the IAM role with the policy attached |
+
+---
+
+## Next Improvements
+
+To turn this into a true AWS IAM baseline, add:
+
+- account password policy
+- MFA enforcement policy for interactive users
+- read-only audit role for IAM, CloudTrail, Config, and Security Hub review
+- optional region restriction policy/SCP example
+- Terraform tests for policy contents
+- Access Analyzer validation notes
 
 ---
 
