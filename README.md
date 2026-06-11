@@ -6,7 +6,7 @@
 
 > Small Terraform module that creates a least-privilege IAM role for read-only access to one S3 bucket.
 
-For the hiring-focused project narrative, see [docs/CASE_STUDY.md](docs/CASE_STUDY.md).
+For design rationale and limitations, see [docs/CASE_STUDY.md](docs/CASE_STUDY.md).
 
 This repository is intentionally scoped to one reviewable IAM pattern: create a service-assumable role with the minimum S3 read permissions needed for a specific bucket. It does not claim to be a full AWS account baseline.
 
