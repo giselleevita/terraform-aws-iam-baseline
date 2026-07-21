@@ -1,14 +1,14 @@
 # terraform-aws-iam-baseline
 
+[![CI](https://github.com/giselleevita/terraform-aws-iam-baseline/actions/workflows/terraform-ci.yml/badge.svg)](https://github.com/giselleevita/terraform-aws-iam-baseline/actions/workflows/terraform-ci.yml)
 ![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.5-purple)
-![AWS](https://img.shields.io/badge/AWS-IAM%20%7C%20S3-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 > Small Terraform module that creates a least-privilege IAM role for read-only access to one S3 bucket.
 
 For design rationale and limitations, see [docs/CASE_STUDY.md](docs/CASE_STUDY.md).
 
-This repository is intentionally scoped to one reviewable IAM pattern: create a service-assumable role with the minimum S3 read permissions needed for a specific bucket. It does not claim to be a full AWS account baseline.
+This repository is intentionally scoped to one reviewable IAM pattern: create a service-assumable role with the minimum S3 read permissions needed for a specific bucket.
 
 ---
 
@@ -63,7 +63,7 @@ Those controls are useful account-baseline features, but they are outside this m
 
 ```hcl
 module "s3_read_role" {
-  source = "./"
+  source = "git::https://github.com/giselleevita/terraform-aws-iam-baseline.git?ref=v0.1.0"
 
   bucket_name = "my-audit-evidence-bucket"
   role_name   = "audit-evidence-reader"
@@ -78,6 +78,24 @@ module "s3_read_role" {
   }
 }
 ```
+
+---
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|---|---|---|---|---|
+| `bucket_name` | Name of the S3 bucket to grant read-only access to | `string` | — | yes |
+| `role_name` | Name of the IAM role to create | `string` | — | yes |
+| `trusted_service_principals` | AWS service principals allowed to assume this role | `list(string)` | `["ec2.amazonaws.com"]` | no |
+| `tags` | Tags applied to IAM resources | `map(string)` | `{}` | no |
+
+## Outputs
+
+| Name | Description |
+|---|---|
+| `role_name` | Name of the created IAM role |
+| `policy_arn` | ARN of the attached read-only policy |
 
 ---
 
