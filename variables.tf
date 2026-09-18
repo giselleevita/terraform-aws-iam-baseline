@@ -3,8 +3,8 @@ variable "bucket_name" {
   type        = string
 
   validation {
-    condition     = length(trim(var.bucket_name, " ")) > 0
-    error_message = "bucket_name must not be empty."
+    condition     = length(var.bucket_name) >= 3 && length(var.bucket_name) <= 63 && can(regex("^[a-z0-9][a-z0-9.-]*[a-z0-9]$", var.bucket_name)) && !strcontains(var.bucket_name, "..") && !can(regex("^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$", var.bucket_name))
+    error_message = "bucket_name must meet AWS S3 naming rules and must not be an IP address."
   }
 }
 
@@ -13,8 +13,8 @@ variable "role_name" {
   type        = string
 
   validation {
-    condition     = length(trim(var.role_name, " ")) > 0
-    error_message = "role_name must not be empty."
+    condition     = length(var.role_name) >= 1 && length(var.role_name) <= 64 && can(regex("^[A-Za-z0-9+=,.@_-]+$", var.role_name))
+    error_message = "role_name must be 1-64 characters using AWS IAM's allowed character set."
   }
 }
 
@@ -30,7 +30,7 @@ variable "trusted_service_principals" {
   default     = ["ec2.amazonaws.com"]
 
   validation {
-    condition     = length(var.trusted_service_principals) > 0
-    error_message = "trusted_service_principals must include at least one service principal."
+    condition     = length(var.trusted_service_principals) > 0 && length(distinct(var.trusted_service_principals)) == length(var.trusted_service_principals) && alltrue([for principal in var.trusted_service_principals : can(regex("^[a-z0-9-]+(?:\\.[a-z0-9-]+)*\\.amazonaws\\.com(?:\\.cn)?$", principal))])
+    error_message = "trusted_service_principals must contain unique AWS service principals such as ec2.amazonaws.com."
   }
 }

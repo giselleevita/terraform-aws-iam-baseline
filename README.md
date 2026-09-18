@@ -38,7 +38,7 @@ flowchart TD
 | Bucket-scoped access | `s3:ListBucket` is limited to `arn:aws:s3:::<bucket>` |
 | Object read access | `s3:GetObject` and `s3:GetObjectVersion` are limited to `arn:aws:s3:::<bucket>/*` |
 | Explicit trust boundary | Only configured AWS service principals can assume the role |
-| Input validation | Bucket name, role name, and trusted principals must be non-empty |
+| Input validation | S3/IAM naming constraints are enforced and trust principals must be unique AWS services |
 | Reviewable policy | The IAM policy document is generated from Terraform data sources |
 
 ---
@@ -124,7 +124,6 @@ To turn this into a true AWS IAM baseline, add:
 - MFA enforcement policy for interactive users
 - read-only audit role for IAM, CloudTrail, Config, and Security Hub review
 - optional region restriction policy/SCP example
-- Terraform tests for policy contents
 - Access Analyzer validation notes
 
 ---
